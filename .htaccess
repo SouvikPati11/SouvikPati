@@ -1,0 +1,108 @@
+# ============================================================
+#  souvikpati.in — Apache configuration
+#  Works on Hostinger / cPanel shared hosting (Apache + mod_rewrite)
+# ============================================================
+
+# Use the correct index and disable directory listing.
+DirectoryIndex index.php index.html
+Options -Indexes
+
+# Follow symlinks (required by mod_rewrite on most hosts).
+Options +FollowSymLinks
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # RewriteBase /
+
+    # ---- Force HTTPS -----------------------------------------
+    # Comment out if you do not have SSL yet.
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # ---- Canonical host (non-www). Uncomment to force non-www.
+    # RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+    # RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+
+    # ---- Front controller ------------------------------------
+    # Serve real files and directories directly.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Everything else goes through the router.
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# ============================================================
+#  Security headers
+# ============================================================
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-XSS-Protection "0"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    # HSTS — enable only once HTTPS is confirmed working everywhere.
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # Content-Security-Policy — optional. The theme uses some inline styles and
+    # (only if you enable them) Google Analytics/Tag Manager, so 'unsafe-inline'
+    # is included. Tighten/remove sources you don't use before enabling.
+    # Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self' https://www.google-analytics.com; base-uri 'self'; form-action 'self'"
+    # Remove the PHP version banner where allowed.
+    Header unset X-Powered-By
+</IfModule>
+
+# ============================================================
+#  Compression
+# ============================================================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE application/xml image/svg+xml
+    AddOutputFilterByType DEFLATE application/rss+xml font/ttf font/otf
+</IfModule>
+<IfModule mod_brotli.c>
+    AddOutputFilterByType BROTLI_COMPRESS text/html text/css application/javascript image/svg+xml
+</IfModule>
+
+# ============================================================
+#  Browser caching
+# ============================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg          "access plus 1 year"
+    ExpiresByType image/png           "access plus 1 year"
+    ExpiresByType image/webp          "access plus 1 year"
+    ExpiresByType image/svg+xml       "access plus 1 year"
+    ExpiresByType image/x-icon        "access plus 1 year"
+    ExpiresByType text/css            "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType font/ttf            "access plus 1 year"
+    ExpiresByType font/woff2          "access plus 1 year"
+    ExpiresByType text/html           "access plus 0 seconds"
+</IfModule>
+
+# ============================================================
+#  Protect sensitive files
+# ============================================================
+<FilesMatch "\.(sql|md|log|ini|sample\.php)$">
+    Require all denied
+</FilesMatch>
+
+# Block access to dotfiles (e.g. .git, .env).
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Deny direct browsing of internal folders (extra layer; each also has its own).
+RedirectMatch 404 ^/(config|includes|templates|database)(/|$)
+
+# ============================================================
+#  Custom error documents
+# ============================================================
+ErrorDocument 403 /index.php
+ErrorDocument 404 /index.php
+
+# Default charset
+AddDefaultCharset UTF-8
